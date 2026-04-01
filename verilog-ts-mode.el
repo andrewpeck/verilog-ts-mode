@@ -1,4 +1,43 @@
-;;; Treesitter-based completion for verilog-ts-mode ;;;
+;;; verilog-ts-mode.el --- Functions for working with verilog files -*- lexical-binding: t; -*-
+;;
+;; Copyright (C) 2023-2026 Andrew Peck
+
+;; Author: Andrew Peck <peckandrew@gmail.com>
+;; URL: https://github.com/andrewpeck/verilog-ts-mode
+;; Version: 0.0.1
+;; Package-Requires: ((emacs "30.1"))
+;; Keywords: tools verilog
+
+;; This file is not part of GNU Emacs.
+;;
+;; This program is free software; you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation; either version 3, or (at your option)
+;; any later version.
+;;
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License
+;; along with GNU Emacs.  If not, see <http://www.gnu.org/licenses/>
+
+;;; Commentary:
+;;
+;; An AI slop very simple tree-sitter-backed Emacs major mode for
+;; Verilog/SystemVerilog with completion-at-point support.
+;;
+;;; Code:
+
+(require 'treesit)
+
+(define-derived-mode verilog-ts-mode verilog-mode "Verilog"
+  "A mode for Verilog."
+  (when (treesit-ready-p 'verilog)
+    (treesit-parser-create 'verilog)
+    (treesit-major-mode-setup))
+  (add-hook 'after-save-hook #'verilog-ts--update-cache nil t))
 
 (defvar verilog-ts-keywords
   '(;; Design units
@@ -50,13 +89,6 @@
 Populated lazily on the first completion request and recomputed on every
 buffer save via `verilog-ts--update-cache'.")
 
-(define-derived-mode verilog-ts-mode verilog-mode "Verilog"
-  "A mode for Verilog."
-  (when (treesit-ready-p 'verilog)
-    (treesit-parser-create 'verilog)
-    (treesit-major-mode-setup))
-  (add-hook 'after-save-hook #'verilog-ts--update-cache nil t))
-
 (defun verilog-ts--typed-children (node types)
   "Return direct children of NODE whose node-type is a member of TYPES."
   (let (result)
@@ -72,8 +104,11 @@ buffer save via `verilog-ts--update-cache'.")
           (verilog-ts--typed-children node '("simple_identifier" "escaped_identifier"))))
 
 (defun verilog-ts--query-nodes (root pattern)
-  "Return all nodes matched by the simple type-only PATTERN in ROOT's subtree.
-PATTERN must be a string of the form \"(node_type) @c\" — no structural constraints."
+  "Return all nodes matched by the simple type-only PATTERN in ROOT's
+subtree.
+
+PATTERN must be a string of the form \"(node_type) @c\" — no structural
+constraints."
   (mapcar #'cdr (treesit-query-capture root pattern)))
 
 (defun verilog-ts--update-cache ()
@@ -91,8 +126,10 @@ return the cached list until the buffer is saved."
 
 (defun verilog-ts--compute-candidates ()
   "Collect declared identifiers from the current buffer via tree-sitter.
-Returns a list of propertized strings; each has a `verilog-ts-type' text property
-holding the declaration keyword (port, wire, logic, reg, parameter, ...)."
+
+Returns a list of propertized strings; each has a `verilog-ts-type' text
+property holding the declaration keyword (port, wire, logic, reg,
+parameter, ...)."
   (when (treesit-parser-list nil 'verilog)
     (let ((root (treesit-buffer-root-node 'verilog))
           (seen (make-hash-table :test 'equal))
@@ -173,11 +210,11 @@ Gathers declared signals, ports, and variables from the current buffer
 using treesitter and presents them as annotated completion candidates."
   (let* ((end   (point))
          (start (save-excursion (skip-syntax-backward "w_") (point))))
-    (when-let ((candidates (verilog-ts--collect-candidates)))
+    (when-let* ((candidates (verilog-ts--collect-candidates)))
       (list start end candidates
             :annotation-function
             (lambda (cand)
-              (when-let ((type (get-text-property 0 'verilog-ts-type cand)))
+              (when-let* ((type (get-text-property 0 'verilog-ts-type cand)))
                 (concat "  " type)))
             :company-kind
             (lambda (cand)
@@ -187,3 +224,6 @@ using treesitter and presents them as annotated completion candidates."
                 ("keyword"                     'keyword)
                 (_                             'variable)))
             :exclusive 'no))))
+
+(provide 'verilog-ts-mode)
+;;; verilog-ts-mode.el ends here
