@@ -1,0 +1,21 @@
+* verilog-ts-mode
+
+An AI slop very simple tree-sitter-backed Emacs major mode for
+Verilog/SystemVerilog with completion-at-point support.
+
+** Completion
+
+=verilog-ts-capf= provides annotated candidates for:
+
+| Category   | Example declarations                              |
+|------------+---------------------------------------------------|
+| port       | =input=, =output=, =inout= (ANSI and non-ANSI)   |
+| wire       | =wire=, =tri=, =wand=, ...                        |
+| logic/reg  | =logic=, =reg=, =bit=, =int=, ...                 |
+| parameter  | =#(parameter int N = 8)=, =parameter_declaration= |
+| localparam | =localparam int NB = ...=                         |
+| genvar     | =genvar i=                                        |
+| keyword    | =always_ff=, =module=, =typedef=, ...             |
+
+Completion candidates are cached per buffer and recomputed on save.
+To customize the keyword list, modify =verilog-ts-keywords=.
