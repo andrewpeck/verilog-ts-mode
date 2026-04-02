@@ -104,8 +104,7 @@ buffer save via `verilog-ts--update-cache'.")
           (verilog-ts--typed-children node '("simple_identifier" "escaped_identifier"))))
 
 (defun verilog-ts--query-nodes (root pattern)
-  "Return all nodes matched by the simple type-only PATTERN in ROOT's
-subtree.
+  "Return all nodes matched by the PATTERN in ROOT's subtree.
 
 PATTERN must be a string of the form \"(node_type) @c\" — no structural
 constraints."
@@ -227,3 +226,4 @@ using treesitter and presents them as annotated completion candidates."
 
 (provide 'verilog-ts-mode)
 ;;; verilog-ts-mode.el ends here
+;; LocalWords:  subtree propertized treesitter
