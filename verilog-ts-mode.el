@@ -123,12 +123,12 @@ return the cached list until the buffer is saved."
   (or verilog-ts--candidates-cache
       (setq verilog-ts--candidates-cache (verilog-ts--compute-candidates))))
 
-(defun verilog-ts--compute-candidates ()
+(defun verilog-ts--compute-buffer-local-candidates ()
   "Collect declared identifiers from the current buffer via tree-sitter.
 
 Returns a list of propertized strings; each has a `verilog-ts-type' text
 property holding the declaration keyword (port, wire, logic, reg,
-parameter, ...)."
+parameter, ...).  Keywords are not included."
   (when (treesit-parser-list nil 'verilog)
     (let ((root (treesit-buffer-root-node 'verilog))
           (seen (make-hash-table :test 'equal))
@@ -195,13 +195,22 @@ parameter, ...)."
         (dolist (decl (verilog-ts--query-nodes root "(genvar_declaration) @c"))
           (dolist (genvar-list (verilog-ts--typed-children decl '("list_of_genvar_identifiers")))
             (dolist (name (verilog-ts--id-children genvar-list))
-              (add name "genvar"))))
-
-        ;; Keywords
-        (dolist (kw verilog-ts-keywords)
-          (add kw "keyword")))
+              (add name "genvar")))))
 
       (nreverse candidates))))
+
+(defun verilog-ts--compute-candidates ()
+  "Collect all completion candidates for the current buffer.
+
+Returns buffer-local declared identifiers followed by keywords, each as
+a propertized string with a `verilog-ts-type' text property."
+  (when-let* ((local (verilog-ts--compute-buffer-local-candidates))
+              (seen (make-hash-table :test 'equal)))
+    (dolist (c local) (puthash (substring-no-properties c) t seen))
+    (append local
+            (cl-loop for kw in verilog-ts-keywords
+                     unless (gethash kw seen)
+                     collect (propertize kw 'verilog-ts-type "keyword")))))
 
 (defun verilog-ts-capf ()
   "Completion-at-point function for `verilog-ts-mode'.
