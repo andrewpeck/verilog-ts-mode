@@ -235,4 +235,4 @@ using treesitter and presents them as annotated completion candidates."
 
 (provide 'verilog-ts-mode)
 ;;; verilog-ts-mode.el ends here
-;; LocalWords:  subtree propertized treesitter
+;; LocalWords:  subtree propertized treesitter verilog systemverilog
