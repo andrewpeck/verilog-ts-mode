@@ -1,6 +1,6 @@
 ;;; test-hog.el -*- lexical-binding: t; -*-
 
-(require 'verilog-port-copy)
+(require 'verilog-ts-mode)
 (require 'ert)
 
 (add-to-list 'treesit-extra-load-path "~/.emacs.d/.local/etc/tree-sitter")
