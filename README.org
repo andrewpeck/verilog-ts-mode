@@ -3,6 +3,8 @@
 An AI slop very simple tree-sitter-backed Emacs major mode for
 Verilog/SystemVerilog with completion-at-point support.
 
+This package does not attempt to reinvent the already great ~verilog-mode~. It just turns on ~tree-sitter~ to enable querying the syntax tree, which is useful for all kinds of nifty features.
+
 ** Completion
 
 =verilog-ts-capf= provides annotated candidates for:
@@ -19,3 +21,7 @@ Verilog/SystemVerilog with completion-at-point support.
 
 Completion candidates are cached per buffer and recomputed on save.
 To customize the keyword list, modify =verilog-ts-keywords=.
+
+** Test
+
+Can be tested with ~make test-ert~ or ~make all~.
