@@ -4,7 +4,7 @@
 
 ;; Author: Andrew Peck <peckandrew@gmail.com>
 ;; URL: https://github.com/andrewpeck/verilog-ts-mode
-;; Version: 0.0.1
+;; Version: 0.0.2
 ;; Package-Requires: ((emacs "30.1"))
 ;; Keywords: tools verilog
 
@@ -31,6 +31,18 @@
 ;;; Code:
 
 (require 'treesit)
+
+(defgroup verilog-ts nil
+  "Tree-sitter backed Verilog/SystemVerilog mode."
+  :group 'languages)
+
+(defcustom verilog-ts-include-path '(".")
+  "List of directories to search when resolving `include directives.
+Paths are searched in order.  Each entry may be absolute or relative;
+relative paths are resolved from the directory of the file that contains
+the `include directive."
+  :type '(repeat directory)
+  :group 'verilog-ts)
 
 (define-derived-mode verilog-ts-mode verilog-mode "Verilog"
   "A mode for Verilog."
@@ -199,18 +211,62 @@ parameter, ...).  Keywords are not included."
 
       (nreverse candidates))))
 
+(defun verilog-ts--find-include-files ()
+  "Return filenames named in `include directives in the current buffer."
+  (let (includes)
+    (save-excursion
+      (goto-char (point-min))
+      (while (re-search-forward "^[ \t]*`include[ \t]+\"\\([^\"]+\\)\"" nil t)
+        (push (match-string-no-properties 1) includes)))
+    (nreverse includes)))
+
+(defun verilog-ts--resolve-include (filename base-dir)
+  "Resolve include FILENAME by searching BASE-DIR then `verilog-ts-include-path'.
+Returns the first readable absolute path found, or nil."
+  (cl-loop for dir in (cons base-dir verilog-ts-include-path)
+           for candidate = (expand-file-name filename dir)
+           when (file-readable-p candidate)
+           return candidate))
+
+(defun verilog-ts--candidates-from-includes (&optional visited base-dir)
+  "Return candidates from files `include'd by the current buffer.
+VISITED is a hash-table of already-processed absolute paths used to
+prevent cycles.  BASE-DIR defaults to `default-directory'."
+  (let ((visited  (or visited (make-hash-table :test 'equal)))
+        (base-dir (or base-dir default-directory))
+        candidates)
+    (dolist (fname (verilog-ts--find-include-files))
+      (when-let* ((abs (verilog-ts--resolve-include fname base-dir)))
+        (unless (gethash abs visited)
+          (puthash abs t visited)
+          (let* ((file-dir (file-name-directory abs))
+                 (file-candidates
+                  (with-temp-buffer
+                    (insert-file-contents abs)
+                    (when (treesit-ready-p 'verilog t)
+                      (treesit-parser-create 'verilog)
+                      (append (verilog-ts--compute-buffer-local-candidates)
+                              (verilog-ts--candidates-from-includes visited file-dir))))))
+            (when file-candidates
+              (setq candidates (append candidates file-candidates)))))))
+    candidates))
+
 (defun verilog-ts--compute-candidates ()
   "Collect all completion candidates for the current buffer.
 
-Returns buffer-local declared identifiers followed by keywords, each as
-a propertized string with a `verilog-ts-type' text property."
-  (when-let* ((local (verilog-ts--compute-buffer-local-candidates))
-              (seen (make-hash-table :test 'equal)))
-    (dolist (c local) (puthash (substring-no-properties c) t seen))
-    (append local
-            (cl-loop for kw in verilog-ts-keywords
-                     unless (gethash kw seen)
-                     collect (propertize kw 'verilog-ts-type "keyword")))))
+Returns buffer-local declared identifiers, candidates from `include'd
+files, and keywords — each as a propertized string with a
+`verilog-ts-type' text property."
+  (let* ((local    (verilog-ts--compute-buffer-local-candidates))
+         (included (verilog-ts--candidates-from-includes))
+         (seen     (make-hash-table :test 'equal))
+         (all-ids  (append local included)))
+    (when all-ids
+      (dolist (c all-ids) (puthash (substring-no-properties c) t seen))
+      (append all-ids
+              (cl-loop for kw in verilog-ts-keywords
+                       unless (gethash kw seen)
+                       collect (propertize kw 'verilog-ts-type "keyword"))))))
 
 (defun verilog-ts-capf ()
   "Completion-at-point function for `verilog-ts-mode'.
