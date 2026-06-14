@@ -5,6 +5,16 @@ Verilog/SystemVerilog with completion-at-point support.
 
 This package does not attempt to reinvent the already great ~verilog-mode~. It just turns on ~tree-sitter~ to enable querying the syntax tree, which is useful for all kinds of nifty features.
 
+** Grammar
+
+A tree-sitter Verilog/SystemVerilog grammar must be installed and on
+~treesit-extra-load-path~ (or in Emacs' default tree-sitter directory).
+
+Upstream renamed the grammar's language from ~verilog~ to
+~systemverilog~. This package prefers the new ~systemverilog~ name and
+falls back to the old ~verilog~ name, so either an old or a new grammar
+build will work.
+
 ** Completion
 
 =verilog-ts-capf= provides annotated candidates for:

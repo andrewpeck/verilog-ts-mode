@@ -44,11 +44,21 @@ the `include directive."
   :type '(repeat directory)
   :group 'verilog-ts)
 
+(defun verilog-ts--lang ()
+  "Return the tree-sitter language symbol for the installed grammar.
+Upstream renamed the grammar's language from `verilog' to
+`systemverilog'.  Prefer the new name, but fall back to the old one so
+that grammars installed before the rename keep working."
+  (cond ((treesit-ready-p 'systemverilog t) 'systemverilog)
+        ((treesit-ready-p 'verilog t)       'verilog)
+        (t                                  'systemverilog)))
+
 (define-derived-mode verilog-ts-mode verilog-mode "Verilog"
   "A mode for Verilog."
-  (when (treesit-ready-p 'verilog)
-    (treesit-parser-create 'verilog)
-    (treesit-major-mode-setup))
+  (let ((lang (verilog-ts--lang)))
+    (when (treesit-ready-p lang)
+      (treesit-parser-create lang)
+      (treesit-major-mode-setup)))
   (add-hook 'after-save-hook #'verilog-ts--update-cache nil t))
 
 (defvar verilog-ts-keywords
@@ -141,8 +151,8 @@ return the cached list until the buffer is saved."
 Returns a list of propertized strings; each has a `verilog-ts-type' text
 property holding the declaration keyword (port, wire, logic, reg,
 parameter, ...).  Keywords are not included."
-  (when (treesit-parser-list nil 'verilog)
-    (let ((root (treesit-buffer-root-node 'verilog))
+  (when (treesit-parser-list nil (verilog-ts--lang))
+    (let ((root (treesit-buffer-root-node (verilog-ts--lang)))
           (seen (make-hash-table :test 'equal))
           candidates)
       (cl-flet ((add (name label)
@@ -243,8 +253,8 @@ prevent cycles.  BASE-DIR defaults to `default-directory'."
                  (file-candidates
                   (with-temp-buffer
                     (insert-file-contents abs)
-                    (when (treesit-ready-p 'verilog t)
-                      (treesit-parser-create 'verilog)
+                    (when (treesit-ready-p (verilog-ts--lang) t)
+                      (treesit-parser-create (verilog-ts--lang))
                       (append (verilog-ts--compute-buffer-local-candidates)
                               (verilog-ts--candidates-from-includes visited file-dir))))))
             (when file-candidates
